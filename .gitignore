@@ -1,0 +1,14 @@
+__pycache__/
+.venv/
+uv_cache/
+.DS_Store
+
+# Data and large files
+*.wav
+*.mp3
+*.png
+data/
+separated/
+*.npy
+*.ipynb
+test_results.log
