@@ -1,6 +1,6 @@
 import os
 import sys
-import pickle
+import torch
 import xml.etree.ElementTree as ET
 import numpy as np
 from tabulate import tabulate
@@ -10,9 +10,9 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, project_root)
 
 from src.onset import detect_onsets
-from src.classification import classify_hits, DRUM_CLASSES
+from src.classification import classify_hits, DRUM_CLASSES, DrumClassifierCNN
 
-MODEL_PATH = os.path.join(project_root, "data", "drum_classifier.pkl")
+MODEL_PATH = os.path.join(project_root, "data", "drum_classifier.pt")
 XML_DIR = os.path.join(project_root, "data", "annotation_xml")
 TOLERANCE_SEC = 0.030 # 30ms
 
@@ -53,14 +53,14 @@ def load_ground_truth(xml_path):
     grouped_events.append((current_group_time, current_group_instruments))
     return grouped_events
 
-def evaluate_track(audio_path, xml_path, model):
+def evaluate_track(audio_path, xml_path, model, device):
     if not os.path.exists(audio_path):
         return {"Track": os.path.basename(audio_path), "Status": "Skip (File Not Found)"}
 
     try:
         # Run Pipeline
         y, sr, onset_samples, onset_times, bpm = detect_onsets(audio_path)
-        predictions = classify_hits(model, y, sr, onset_samples)
+        predictions = classify_hits(model, y, sr, onset_samples, device=device)
         
         status_info = {
             "Track": os.path.basename(audio_path),
@@ -126,8 +126,14 @@ def main():
         print(f"Error: Model not found at {MODEL_PATH}")
         return
 
-    with open(MODEL_PATH, 'rb') as f:
-        model = pickle.load(f)
+    # Determine device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # Load model
+    model = DrumClassifierCNN(n_mels=128, n_classes=len(DRUM_CLASSES))
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model = model.to(device)
+    model.eval()
 
     test_cases = [
         # (audio_rel_path, xml_rel_name)
@@ -153,7 +159,7 @@ def main():
     results = []
     for audio, xml in final_cases:
         print(f"Evaluating {os.path.basename(audio)}...")
-        res = evaluate_track(audio, xml, model)
+        res = evaluate_track(audio, xml, model, device)
         results.append(res)
     
     print("\n" + "="*80)
