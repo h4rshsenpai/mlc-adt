@@ -14,7 +14,7 @@ from sklearn.metrics import classification_report
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-from src.classification import extract_features, WINDOW_SEC, DRUM_CLASSES
+from src.classification import extract_features, WINDOW_SEC, DRUM_CLASSES, MODEL_SAMPLE_RATE
 
 # Paths
 DATA_DIR = os.path.join(project_root, "data")
@@ -131,9 +131,9 @@ def build_dataset():
         if not all_events:
             continue
         
-        # Load audio (downsample to 22.05kHz for speed)
+        # Load audio at the model sample rate used by inference.
         try:
-            audio_data, sr = librosa.load(audio_path, sr=22050)
+            audio_data, sr = librosa.load(audio_path, sr=MODEL_SAMPLE_RATE)
         except Exception as e:
             print(f"Error loading {audio_path}: {e}")
             continue

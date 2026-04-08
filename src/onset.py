@@ -15,6 +15,7 @@ import librosa.display
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from src.classification import MODEL_SAMPLE_RATE
 
 DEFAULT_HOP_LENGTH = 512  # librosa default
 
@@ -41,7 +42,7 @@ def estimate_tempo(y, sr):
 
     return bpm, mioi_samples
 
-def detect_onsets(audio_path):
+def detect_onsets(audio_path, target_sr=MODEL_SAMPLE_RATE):
     """
     Loads an audio file, estimates its tempo, and detects onsets with a
     musically-grounded refractory window.
@@ -54,7 +55,7 @@ def detect_onsets(audio_path):
         bpm: Estimated tempo.
     """
     print(f"[{os.path.basename(audio_path)}] Loading audio...")
-    y, sr = librosa.load(audio_path, sr=None)
+    y, sr = librosa.load(audio_path, sr=target_sr)
 
     print(f"[{os.path.basename(audio_path)}] Estimating tempo...")
     bpm, mioi_frames = estimate_tempo(y, sr)
