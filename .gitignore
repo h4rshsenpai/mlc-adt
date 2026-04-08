@@ -1,6 +1,7 @@
 __pycache__/
 .venv/
 uv_cache/
+.mplconfig/
 .DS_Store
 
 # Data and large files

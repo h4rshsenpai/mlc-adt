@@ -4,21 +4,22 @@ import zipfile
 from tqdm import tqdm
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-ZIP_PATH = os.path.join(DATA_DIR, "IDMT-SMT-DRUMS-V2.zip")
-EXTRACT_DIR = os.path.join(DATA_DIR, "IDMT-SMT-DRUMS-V2")
+ZIP_PATH = os.path.join(DATA_DIR, "groove-v1.0.0.zip")
+EXTRACT_DIR = os.path.join(DATA_DIR, "groove")
 
-# Zenodo API direct file download URL
-ZENODO_URL = "https://zenodo.org/api/records/7544164/files/IDMT-SMT-DRUMS-V2.zip/content"
+# Google Magenta GMD direct file download URL
+GMD_URL = "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip"
 
 def download_dataset():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
         
     if os.path.exists(ZIP_PATH) or os.path.exists(EXTRACT_DIR):
-        print("Dataset already partially or fully downloaded.")
+        print("Dataset already partially or fully downloaded/extracted.")
     else:
-        print(f"Downloading IDMT-SMT-DRUMS dataset to {ZIP_PATH}...")
-        response = requests.get(ZENODO_URL, stream=True)
+        print(f"Downloading Groove MIDI Dataset (GMD) to {ZIP_PATH}...")
+        print("WARNING: This file is ~26GB and may take significant time depending on your connection.")
+        response = requests.get(GMD_URL, stream=True)
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
@@ -44,3 +45,4 @@ def extract_dataset():
 if __name__ == "__main__":
     download_dataset()
     extract_dataset()
+

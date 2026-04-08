@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import butter, filtfilt
 
 WINDOW_SEC = 0.100  # 100ms window after onset
-DRUM_CLASSES = ['KD', 'SD', 'HH']  # Standard class ordering for multi-hot vectors
+DRUM_CLASSES = ['KD', 'SD', 'HH', 'TT', 'CY']  # KD (Kick), SD (Snare), HH (Hi-Hat), TT (Toms), CY (Cymbals)
 HIGHPASS_CUTOFF_HZ = 250  # Suppress kick bleed-over (kick energy mostly lives below 200Hz)
 
 def _highpass_filter(y, sr, cutoff=HIGHPASS_CUTOFF_HZ):

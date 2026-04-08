@@ -1,4 +1,14 @@
 import os
+import tempfile
+
+# Matplotlib/fontconfig want writable cache directories very early during import.
+# In sandboxed Codex runs, $HOME and the Homebrew cache paths may be read-only, so
+# force both fontconfig and Matplotlib to use a writable temp location.
+_cache_root = os.environ.get("XDG_CACHE_HOME") or os.path.join(tempfile.gettempdir(), "codex-cache")
+os.makedirs(_cache_root, exist_ok=True)
+os.environ.setdefault("XDG_CACHE_HOME", _cache_root)
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(_cache_root, "matplotlib"))
+
 import numpy as np
 import librosa
 import librosa.display

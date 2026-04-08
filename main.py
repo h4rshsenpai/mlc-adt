@@ -27,14 +27,16 @@ def generate_classification_plot(y, sr, onset_times, predictions, output_path, t
     t_start, t_end = zoom_range if zoom_range else (None, None)
 
     print(f"Plotting multi-label onsets to {output_path}...")
-    plt.figure(figsize=(14, 5))
-    librosa.display.waveshow(y, sr=sr, alpha=0.6)
+    fig, ax = plt.subplots(figsize=(14, 5))
+    librosa.display.waveshow(y, sr=sr, alpha=0.6, ax=ax)
 
     # Define distinct colors and marker shapes for our classes
     style_map = {
         'KD': {'color': 'r', 'marker': 'o'},  # Red Circle
         'SD': {'color': 'g', 'marker': 'X'},  # Green Cross
-        'HH': {'color': 'b', 'marker': '^'}   # Blue Triangle
+        'HH': {'color': 'b', 'marker': '^'},  # Blue Triangle
+        'TT': {'color': 'y', 'marker': 's'},  # Yellow Square
+        'CY': {'color': 'm', 'marker': 'D'}   # Magenta Diamond
     }
     labels_plotted = set()
 
@@ -48,36 +50,40 @@ def generate_classification_plot(y, sr, onset_times, predictions, output_path, t
             continue
 
         # Draw a generic dashed line to mark the onset
-        plt.vlines(t, ymin=-1, ymax=1, color='k', alpha=0.3, linestyle='--')
+            ax.vlines(t, ymin=-1, ymax=1, color='k', alpha=0.3, linestyle='--')
 
         # Stack markers vertically to represent simultaneous hits
         num_classes = len(active_classes)
-        if num_classes == 1:
-            y_offsets = [0.8]
-        elif num_classes == 2:
-            y_offsets = [0.8, -0.8]
-        else:
-            y_offsets = [0.8, 0.0, -0.8]
+        y_offsets = np.linspace(0.85, -0.85, num_classes) if num_classes > 1 else [0.85]
 
         for i, cls in enumerate(active_classes):
             c = style_map[cls]['color']
             m = style_map[cls]['marker']
             label = cls if cls not in labels_plotted else None
-            plt.scatter(t, y_offsets[i], color=c, marker=m, s=100, label=label, zorder=5)
+            ax.scatter(t, y_offsets[i], color=c, marker=m, s=100, label=label, zorder=5)
             if label:
                 labels_plotted.add(cls)
 
     if zoom_range:
-        plt.xlim(t_start, t_end)
+        ax.set_xlim(t_start, t_end)
         title += f" ({t_start}s – {t_end}s)"
 
-    plt.title(title)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Amplitude")
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
+    ax.set_title(title, pad=18)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Amplitude")
+    handles, legend_labels = ax.get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles,
+            legend_labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 1.06),
+            ncol=min(len(legend_labels), 5),
+            frameon=False,
+        )
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(output_path)
+    plt.close(fig)
 
 def parse_zoom(zoom_str):
     """Parse a 'start:end' zoom string into a (float, float) tuple."""
