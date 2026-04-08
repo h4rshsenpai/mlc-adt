@@ -1,15 +1,15 @@
 import sys
 import os
 import argparse
-import pickle
+import torch
 import numpy as np
 
 from src.onset import detect_onsets
-from src.classification import classify_hits
+from src.classification import classify_hits, DrumClassifierCNN
 
 # Paths
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "drum_classifier.pkl")
+MODEL_PATH = os.path.join(PROJECT_ROOT, "data", "drum_classifier.pt")
 
 def generate_classification_plot(y, sr, onset_times, predictions, output_path, title, zoom_range=None):
     """
@@ -105,6 +105,9 @@ def main(audio_path, zoom_range=None):
         print(f"ERROR: Audio file not found: {audio_path}")
         sys.exit(1)
 
+    # Determine device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     # Phase 1: Onset Detection (tempo-aware refractory window)
     y, sr, onset_samples, onset_times, bpm = detect_onsets(audio_path)
     print(f"[{os.path.basename(audio_path)}] Estimated tempo: {bpm:.1f} BPM")
@@ -114,12 +117,14 @@ def main(audio_path, zoom_range=None):
         return
 
     # Load Model
-    with open(MODEL_PATH, 'rb') as f:
-        clf = pickle.load(f)
+    model = DrumClassifierCNN(n_mels=128, n_classes=5)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model = model.to(device)
+    model.eval()
 
     # Phase 2: Classification (Multi-Label)
     print(f"[{os.path.basename(audio_path)}] Extracting features and classifying hits...")
-    predictions = classify_hits(clf, y, sr, onset_samples)
+    predictions = classify_hits(model, y, sr, onset_samples, device=device)
 
     # Print Results
     print("\n--- MULTI-LABEL CLASSIFICATION RESULTS ---")

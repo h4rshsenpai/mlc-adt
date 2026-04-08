@@ -3,7 +3,7 @@ import librosa
 import numpy as np
 from abc import ABC, abstractmethod
 from tqdm import tqdm
-from src.classification import extract_features, WINDOW_SEC, DRUM_CLASSES, MODEL_SAMPLE_RATE
+from src.classification import extract_mel_spectrogram, WINDOW_SEC, DRUM_CLASSES, MODEL_SAMPLE_RATE
 
 class BaseDataset(ABC):
     """
@@ -65,7 +65,12 @@ class BaseDataset(ABC):
 
     def build(self, max_tracks=None, desc="Processing dataset"):
         """
-        Iterates through tracks, loads audio, extracts features for each ground truth onset.
+        Iterates through tracks, loads audio, extracts Mel-Spectrograms for each ground truth onset.
+        
+        Returns:
+            X (list[dict]): Each dict has keys 'spec' (np.ndarray shape (n_mels, n_frames, 1)) 
+                           and 'gap_sec' (float)
+            y (np.ndarray): Multi-hot labels, shape (n_samples, n_classes)
         """
         X, y = [], []
         tracks = self.get_tracks()
@@ -106,12 +111,15 @@ class BaseDataset(ABC):
                     
                 onset_gap_sec = (onset_sec - prev_onset_sec) if prev_onset_sec is not None else 1.0
                 
-                features = extract_features(y_slice, self.sr, onset_gap_sec=onset_gap_sec)
+                # Extract Mel-Spectrogram (returns shape: n_mels, n_frames, 1)
+                mel_spec = extract_mel_spectrogram(y_slice, self.sr)
+                
                 # Map instruments to multi-hot vector based on DRUM_CLASSES
                 multi_hot = [1 if cls in instruments else 0 for cls in DRUM_CLASSES]
                 
-                X.append(features)
+                # Store mel-spec and gap_sec together
+                X.append({"spec": mel_spec, "gap_sec": onset_gap_sec})
                 y.append(multi_hot)
                 prev_onset_sec = onset_sec
-                
-        return np.array(X), np.array(y)
+        
+        return X, np.array(y)
