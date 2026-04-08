@@ -1,48 +1,80 @@
 import os
 import requests
 import zipfile
+import argparse
 from tqdm import tqdm
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-ZIP_PATH = os.path.join(DATA_DIR, "groove-v1.0.0.zip")
-EXTRACT_DIR = os.path.join(DATA_DIR, "groove")
 
-# Google Magenta GMD direct file download URL
-GMD_URL = "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip"
+# Dataset configurations
+DATASETS = {
+    "gmd": {
+        "url": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip",
+        "zip_name": "groove-v1.0.0.zip",
+        "extract_to": "groove",
+        "check_path": "groove/info.csv"
+    },
+    "idmt": {
+        "url": "https://www.idmt.fraunhofer.de/content/dam/idmt/en/documents/Datasets/IDMT-SMT-DRUMS-V2.zip",
+        "zip_name": "IDMT-SMT-DRUMS-V2.zip",
+        "extract_to": ".", # Extracts to audio/, annotation_xml/, etc. directly
+        "check_path": "annotation_xml"
+    }
+}
 
-def download_dataset():
+def download_file(url, target_path):
+    print(f"Downloading {url} to {target_path}...")
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 1024 * 1024
+    progress_bar = tqdm(total=total_size, unit='iB', unit_scale=True, desc="Download")
+    
+    with open(target_path, 'wb') as file:
+        for data in response.iter_content(block_size):
+            progress_bar.update(len(data))
+            file.write(data)
+    progress_bar.close()
+    print("Download complete.")
+
+def extract_file(zip_path, extract_dir):
+    print(f"Extracting {zip_path} to {extract_dir}...")
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_dir)
+    print("Extraction complete.")
+
+def fetch_dataset(name):
+    if name not in DATASETS:
+        print(f"Unknown dataset: {name}")
+        return
+
+    config = DATASETS[name]
+    zip_path = os.path.join(DATA_DIR, config["zip_name"])
+    check_path = os.path.join(DATA_DIR, config["check_path"])
+
+    if os.path.exists(check_path):
+        print(f"Dataset '{name}' already exists at {check_path}.")
+        return
+
+    if not os.path.exists(zip_path):
+        download_file(config["url"], zip_path)
+    
+    extract_dir = os.path.join(DATA_DIR, config["extract_to"]) if config["extract_to"] != "." else DATA_DIR
+    extract_file(zip_path, extract_dir)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fetch benchmark datasets.")
+    parser.add_argument("dataset", type=str, nargs="?", default="gmd", help="Dataset name (gmd, idmt)")
+    parser.add_argument("--all", action="store_true", help="Fetch all supported datasets")
+    
+    args = parser.parse_args()
+    
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
         
-    if os.path.exists(ZIP_PATH) or os.path.exists(EXTRACT_DIR):
-        print("Dataset already partially or fully downloaded/extracted.")
+    if args.all:
+        for ds in DATASETS:
+            fetch_dataset(ds)
     else:
-        print(f"Downloading Groove MIDI Dataset (GMD) to {ZIP_PATH}...")
-        print("WARNING: This file is ~26GB and may take significant time depending on your connection.")
-        response = requests.get(GMD_URL, stream=True)
-        response.raise_for_status()
-        
-        total_size = int(response.headers.get('content-length', 0))
-        block_size = 1024 * 1024
-        progress_bar = tqdm(total=total_size, unit='iB', unit_scale=True, desc="Downloading")
-        
-        with open(ZIP_PATH, 'wb') as file:
-            for data in response.iter_content(block_size):
-                progress_bar.update(len(data))
-                file.write(data)
-        progress_bar.close()
-        print("Download complete.")
-
-def extract_dataset():
-    if not os.path.exists(EXTRACT_DIR) and os.path.exists(ZIP_PATH):
-        print(f"Extracting {ZIP_PATH} to {DATA_DIR}...")
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-            zip_ref.extractall(DATA_DIR)
-        print("Dataset extracted successfully.")
-    else:
-        print("Extraction already complete, or zip file not found.")
-
-if __name__ == "__main__":
-    download_dataset()
-    extract_dataset()
-
+        fetch_dataset(args.dataset)
